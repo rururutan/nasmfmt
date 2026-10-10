@@ -70,6 +70,15 @@ func formatFile(file string) error {
 		return err
 	}
 
+	// src has now been fully read. Close it before renaming the temp file over
+	// it: on Windows, renaming over a file that still has an open handle fails
+	// with "Access is denied" (ERROR_ACCESS_DENIED). The deferred src.Close()
+	// above keeps working as cleanup for the earlier error paths; the second
+	// close here is a harmless no-op on the success path.
+	if err := src.Close(); err != nil {
+		return err
+	}
+
 	if err := dstbuf.Flush(); err != nil {
 		return fmt.Errorf("cannot flush write buffer: %w", err)
 	}
