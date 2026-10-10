@@ -55,6 +55,20 @@ func Format(dst io.Writer, src io.Reader, cfg FormatConfig) error {
 			continue
 		}
 
+		if p, ok := line.Token.(nasm.PseudoToken); ok {
+			// A labeled pseudo is split into a label line followed by the data
+			// line; an unlabeled pseudo is a single data line. The pseudo data
+			// is indented like an instruction (see writeLinesNoComment).
+			if p.Label != "" {
+				addToBlock(nasm.Line{Token: nasm.LabelToken{Label: p.Label}})
+			}
+			addToBlock(nasm.Line{
+				Token:   nasm.PseudoToken{Instr: p.Instr, Text: p.Text},
+				Comment: line.Comment,
+			})
+			continue
+		}
+
 		addToBlock(line)
 	}
 
@@ -130,8 +144,8 @@ func writeLinesNoComment(lines nasm.Lines, cfg FormatConfig) []string {
 		var s strings.Builder
 
 		if line.Token != nil {
-			_, instr := line.Token.(nasm.InstructionToken)
-			if instr {
+			switch line.Token.(type) {
+			case nasm.InstructionToken, nasm.PseudoToken:
 				s.WriteString(strings.Repeat(" ", cfg.InstructionIndent))
 			}
 
