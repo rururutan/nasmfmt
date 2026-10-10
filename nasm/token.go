@@ -90,6 +90,12 @@ func ParseLabelToken(parser *Parser, line string) (Token, string) {
 	}
 
 	label := strings.TrimSpace(line[:idx])
+	// A label is a single identifier. If the text before ':' contains
+	// whitespace it is not a label -- e.g. a far pointer such as
+	// "call 3000h:0" must fall through to instruction parsing.
+	if strings.ContainsAny(label, " \t") {
+		return nil, line
+	}
 	rest := strings.TrimSpace(line[idx+1:])
 	if strings.Contains(rest, "[") || strings.Contains(rest, "]") {
 		return nil, line
@@ -169,7 +175,11 @@ func (t SectionToken) String() string {
 }
 
 var directiveKeywords = []string{
+	"bits",
+	"use16",
+	"use32",
 	"default",
+	"section",
 	"absolute",
 	"extern",
 	"global",
@@ -245,6 +255,9 @@ func ParsePseudoToken(parser *Parser, line string) (Token, string) {
 }
 
 func (t PseudoToken) String() string {
+	if t.Label == "" {
+		return t.Instr + "\t" + t.Text
+	}
 	return t.Label + "\t" + t.Instr + "\t" + t.Text
 }
 
